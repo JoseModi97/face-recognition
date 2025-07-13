@@ -5,6 +5,7 @@ function startWebcam() {
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             webcamElement.srcObject = stream;
+            webcamElement.addEventListener('play', onPlay);
         })
         .catch(err => {
             console.error("Error starting webcam: ", err);
@@ -12,44 +13,58 @@ function startWebcam() {
         });
 }
 
-$('#login-face').on('click', async () => {
-    const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
-    if (detection) {
-        $.ajax({
-            type: 'GET',
-            url: 'users.php',
-            dataType: 'json',
-            success: function(users) {
-                const labeledFaceDescriptors = users.map(user => {
-                    const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
-                    return new faceapi.LabeledFaceDescriptors(user.email, descriptors);
-                });
-                const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
-                const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+async function onPlay() {
+    const canvas = faceapi.createCanvasFromMedia(webcamElement);
+    const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
+    videoContainer.append(canvas);
+    faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
 
-                if (bestMatch.label !== 'unknown') {
-                    $.ajax({
-                        type: 'POST',
-                        url: 'login.php',
-                        data: JSON.stringify({ email: bestMatch.label }),
-                        contentType: 'application/json',
-                        success: function(response) {
-                            UIkit.notification({message: 'Login successful!', status: 'success'});
-                            window.location.href = 'dashboard.php';
-                        },
-                        error: function(error) {
-                            UIkit.notification({message: 'Login failed.', status: 'danger'});
-                        }
-                    });
-                } else {
-                    UIkit.notification({message: 'Face not recognized.', status: 'danger'});
-                }
+    const users = await $.ajax({
+        type: 'GET',
+        url: 'users.php',
+        dataType: 'json'
+    });
+
+    const labeledFaceDescriptors = users.map(user => {
+        const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
+        return new faceapi.LabeledFaceDescriptors(user.name, descriptors);
+    });
+    const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
+
+    let loggedIn = false;
+    setInterval(async () => {
+        if (loggedIn) return;
+        const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
+        const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        faceapi.draw.drawDetections(canvas, resizedDetections);
+        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+        resizedDetections.forEach(detection => {
+            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+            const box = detection.detection.box;
+            const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
+            drawBox.draw(canvas);
+            if (bestMatch.label !== 'unknown' && !loggedIn) {
+                loggedIn = true;
+                const user = users.find(u => u.name === bestMatch.label);
+                $.ajax({
+                    type: 'POST',
+                    url: 'login.php',
+                    data: JSON.stringify({ email: user.email }),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        UIkit.notification({message: 'Login successful!', status: 'success'});
+                        window.location.href = 'dashboard.php';
+                    },
+                    error: function(error) {
+                        UIkit.notification({message: 'Login failed.', status: 'danger'});
+                        loggedIn = false;
+                    }
+                });
             }
         });
-    } else {
-        UIkit.notification({message: 'No face detected.', status: 'danger'});
-    }
-});
+    }, 100);
+}
 
 $('#capture-face').on('click', async () => {
     const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
