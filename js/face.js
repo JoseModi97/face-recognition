@@ -47,6 +47,7 @@ const face = {
             $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="/register" class="uk-button uk-button-default">Register</a>');
             return;
         }
+        $('a[href="/register"]').show();
 
         const labeledFaceDescriptors = this.getLabeledFaceDescriptors(users);
         const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
