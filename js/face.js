@@ -18,6 +18,9 @@ async function onPlay() {
     const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
     videoContainer.append(canvas);
     faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
+    $(canvas).css('position', 'absolute');
+    $(canvas).css('top', '0');
+    $(canvas).css('left', '0');
 
     const users = await $.ajax({
         type: 'GET',
