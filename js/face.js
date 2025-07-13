@@ -22,8 +22,8 @@ async function onPlay() {
     $(canvas).css('top', '0');
     $(canvas).css('left', '0');
 
-    const videoContainerParent = $('.uk-margin[style*="position: relative"]');
-    videoContainerParent.addClass('glow-border');
+    const loadingOverlay = $('.loading-overlay');
+    loadingOverlay.removeClass('hidden');
 
     const users = await $.ajax({
         type: 'GET',
@@ -31,7 +31,7 @@ async function onPlay() {
         dataType: 'json'
     });
 
-    videoContainerParent.removeClass('glow-border');
+    loadingOverlay.addClass('hidden');
 
     if (users.length === 0) {
         $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
