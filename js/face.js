@@ -18,8 +18,8 @@ $('#login-face').on('click', async () => {
         $.ajax({
             type: 'GET',
             url: 'users.php',
-            success: function(response) {
-                const users = JSON.parse(response);
+            dataType: 'json',
+            success: function(users) {
                 const labeledFaceDescriptors = users.map(user => {
                     const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
                     return new faceapi.LabeledFaceDescriptors(user.email, descriptors);
