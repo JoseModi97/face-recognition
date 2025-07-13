@@ -1,64 +1,65 @@
-const webcamElement = document.getElementById('webcam');
-let capturedDescriptors = [];
+const face = {
+    webcamElement: document.getElementById('webcam'),
+    capturedDescriptors: [],
+    init: function() {
+        this.loadModels().then(() => this.startWebcam());
+        this.addEventListeners();
+    },
+    loadModels: function() {
+        return Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri('face-api'),
+            faceapi.nets.faceLandmark68Net.loadFromUri('face-api'),
+            faceapi.nets.faceRecognitionNet.loadFromUri('face-api'),
+            faceapi.nets.ssdMobilenetv1.loadFromUri('face-api')
+        ]);
+    },
+    startWebcam: function() {
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                this.webcamElement.srcObject = stream;
+                this.webcamElement.addEventListener('play', () => this.onPlay());
+            })
+            .catch(err => {
+                console.error("Error starting webcam: ", err);
+                UIkit.notification({message: 'Error starting webcam.', status: 'danger'});
+            });
+    },
+    onPlay: async function() {
+        const canvas = faceapi.createCanvasFromMedia(this.webcamElement);
+        const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
+        videoContainer.append(canvas);
+        faceapi.matchDimensions(canvas, { width: this.webcamElement.width, height: this.webcamElement.height });
+        $(canvas).css('position', 'absolute');
+        $(canvas).css('top', '0');
+        $(canvas).css('left', '0');
 
-function startWebcam() {
-    navigator.mediaDevices.getUserMedia({ video: true })
-        .then(stream => {
-            webcamElement.srcObject = stream;
-            webcamElement.addEventListener('play', onPlay);
-        })
-        .catch(err => {
-            console.error("Error starting webcam: ", err);
-            UIkit.notification({message: 'Error starting webcam.', status: 'danger'});
-        });
-}
+        const videoContainerParent = $('.uk-margin[style*="position: relative"]');
+        videoContainerParent.addClass('glow-border');
+        $('#loader').show();
 
-async function onPlay() {
-    const canvas = faceapi.createCanvasFromMedia(webcamElement);
-    const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
-    videoContainer.append(canvas);
-    faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
-    $(canvas).css('position', 'absolute');
-    $(canvas).css('top', '0');
-    $(canvas).css('left', '0');
+        const users = await this.getUsers();
 
-    const videoContainerParent = $('.uk-margin[style*="position: relative"]');
-    videoContainerParent.addClass('glow-border');
-    $('#loader').show();
+        videoContainerParent.removeClass('glow-border');
+        $('#loader').hide();
+        $('#skeleton-loader').hide();
 
-    const users = await $.ajax({
-        type: 'GET',
-        url: 'users.php',
-        dataType: 'json'
-    });
-
-    videoContainerParent.removeClass('glow-border');
-    $('#loader').hide();
-    $('#skeleton-loader').hide();
-
-    if (users.length === 0) {
-        $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
-        return;
-    }
-
-    const labeledFaceDescriptors = users.map(user => {
-        const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
-        return new faceapi.LabeledFaceDescriptors(user.name, descriptors);
-    });
-    const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
-
-    let forwardTimes = [];
-    let currentUser = null;
-
-    async function onFrame() {
-        if (webcamElement.paused || webcamElement.ended) {
-            return setTimeout(() => onFrame());
+        if (users.length === 0) {
+            $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="/register" class="uk-button uk-button-default">Register</a>');
+            return;
         }
 
-        const ts = Date.now();
-        const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
-        forwardTimes = [Date.now() - ts].concat(forwardTimes).slice(0, 30);
-        const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
+        const labeledFaceDescriptors = this.getLabeledFaceDescriptors(users);
+        const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
+
+        this.onFrame(canvas, faceMatcher, users);
+    },
+    onFrame: async function(canvas, faceMatcher, users) {
+        if (this.webcamElement.paused || this.webcamElement.ended) {
+            return setTimeout(() => this.onFrame(canvas, faceMatcher, users));
+        }
+
+        const detections = await faceapi.detectAllFaces(this.webcamElement).withFaceLandmarks().withFaceDescriptors();
+        const resizedDetections = faceapi.resizeResults(detections, { width: this.webcamElement.width, height: this.webcamElement.height });
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
         faceapi.draw.drawDetections(canvas, resizedDetections);
         faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
@@ -68,115 +69,124 @@ async function onPlay() {
             const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
             drawBox.draw(canvas);
             if (bestMatch.label !== 'unknown') {
-                currentUser = users.find(u => u.name === bestMatch.label);
+                this.currentUser = users.find(u => u.name === bestMatch.label);
                 $('#login-face').show();
             } else {
-                currentUser = null;
+                this.currentUser = null;
                 $('#login-face').hide();
             }
         });
-        setTimeout(() => onFrame());
-    }
-    onFrame();
-
-    $('#login-face').on('click', async () => {
-        if (currentUser) {
+        setTimeout(() => this.onFrame(canvas, faceMatcher, users));
+    },
+    getUsers: function() {
+        return $.ajax({
+            type: 'GET',
+            url: '/api/users',
+            dataType: 'json'
+        });
+    },
+    getLabeledFaceDescriptors: function(users) {
+        return users.map(user => {
+            const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
+            return new faceapi.LabeledFaceDescriptors(user.name, descriptors);
+        });
+    },
+    addEventListeners: function() {
+        $('#login-face').on('click', () => this.login());
+        $('#capture-face').on('click', () => this.captureFace());
+        $('#image-upload').on('change', () => this.toggleWebcam());
+        $('#upload-image').on('click', () => this.uploadImage());
+        $('#register-form').on('submit', (e) => this.register(e));
+    },
+    login: function() {
+        if (this.currentUser) {
             $.ajax({
                 type: 'POST',
-                url: 'login.php',
-                data: JSON.stringify({ email: currentUser.email }),
+                url: '/login',
+                data: JSON.stringify({ email: this.currentUser.email }),
                 contentType: 'application/json',
                 success: function(response) {
                     UIkit.notification({message: 'Login successful!', status: 'success'});
-                    window.location.href = 'dashboard.php';
+                    window.location.href = '/dashboard';
                 },
                 error: function(error) {
                     UIkit.notification({message: 'Login failed.', status: 'danger'});
                 }
             });
         }
-    });
-}
-
-$('#capture-face').on('click', async () => {
-    const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
-    if (detection) {
-        capturedDescriptors.push(detection.descriptor);
-        UIkit.notification({message: `Captured face descriptor ${capturedDescriptors.length}/5`, status: 'success'});
-        if (capturedDescriptors.length >= 5) {
-            $('#capture-face').prop('disabled', true);
-            UIkit.notification({message: 'Maximum face descriptors captured.', status: 'primary'});
-        }
-    } else {
-        UIkit.notification({message: 'No face detected.', status: 'danger'});
-    }
-});
-
-$('#image-upload').on('change', () => {
-    if ($('#image-upload').val()) {
-        $('#webcam').hide();
-        $('#capture-face').hide();
-    } else {
-        $('#webcam').show();
-        $('#capture-face').show();
-    }
-});
-
-$('#upload-image').on('click', async () => {
-    const imageUpload = document.getElementById('image-upload');
-    if (imageUpload.files.length > 0) {
-        const image = await faceapi.bufferToImage(imageUpload.files[0]);
-        const detection = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+    },
+    captureFace: async function() {
+        const detection = await faceapi.detectSingleFace(this.webcamElement).withFaceLandmarks().withFaceDescriptor();
         if (detection) {
-            capturedDescriptors.push(detection.descriptor);
-            UIkit.notification({message: `Captured face descriptor ${capturedDescriptors.length}/5`, status: 'success'});
-            if (capturedDescriptors.length >= 5) {
+            this.capturedDescriptors.push(detection.descriptor);
+            UIkit.notification({message: `Captured face descriptor ${this.capturedDescriptors.length}/5`, status: 'success'});
+            if (this.capturedDescriptors.length >= 5) {
                 $('#capture-face').prop('disabled', true);
-                $('#upload-image').prop('disabled', true);
                 UIkit.notification({message: 'Maximum face descriptors captured.', status: 'primary'});
             }
         } else {
-            UIkit.notification({message: 'No face detected in the uploaded image.', status: 'danger'});
+            UIkit.notification({message: 'No face detected.', status: 'danger'});
         }
-    } else {
-        UIkit.notification({message: 'Please select an image file.', status: 'warning'});
-    }
-});
-
-$('#register-form').on('submit', async (e) => {
-    e.preventDefault();
-    const name = $('#name').val();
-    const email = $('#email').val();
-
-    if (capturedDescriptors.length < 5) {
-        UIkit.notification({message: 'Please capture 5 face descriptors.', status: 'warning'});
-        return;
-    }
-
-    const data = {
-        name: name,
-        email: email,
-        descriptors: capturedDescriptors
-    };
-
-    $.ajax({
-        type: 'POST',
-        url: 'register.php',
-        data: JSON.stringify(data),
-        contentType: 'application/json',
-        success: function(response) {
-            UIkit.notification({message: 'Registration successful!', status: 'success'});
-            window.location.href = 'index.html';
-        },
-        error: function(error) {
-            UIkit.notification({message: 'Registration failed.', status: 'danger'});
+    },
+    toggleWebcam: function() {
+        if ($('#image-upload').val()) {
+            $('#webcam').hide();
+            $('#capture-face').hide();
+        } else {
+            $('#webcam').show();
+            $('#capture-face').show();
         }
-    });
-});
+    },
+    uploadImage: async function() {
+        const imageUpload = document.getElementById('image-upload');
+        if (imageUpload.files.length > 0) {
+            const image = await faceapi.bufferToImage(imageUpload.files[0]);
+            const detection = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+            if (detection) {
+                this.capturedDescriptors.push(detection.descriptor);
+                UIkit.notification({message: `Captured face descriptor ${this.capturedDescriptors.length}/5`, status: 'success'});
+                if (this.capturedDescriptors.length >= 5) {
+                    $('#capture-face').prop('disabled', true);
+                    $('#upload-image').prop('disabled', true);
+                    UIkit.notification({message: 'Maximum face descriptors captured.', status: 'primary'});
+                }
+            } else {
+                UIkit.notification({message: 'No face detected in the uploaded image.', status: 'danger'});
+            }
+        } else {
+            UIkit.notification({message: 'Please select an image file.', status: 'warning'});
+        }
+    },
+    register: function(e) {
+        e.preventDefault();
+        const name = $('#name').val();
+        const email = $('#email').val();
 
-Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri('face-api'),
-    faceapi.nets.faceLandmark68Net.loadFromUri('face-api'),
-    faceapi.nets.faceRecognitionNet.loadFromUri('face-api'),
-    faceapi.nets.ssdMobilenetv1.loadFromUri('face-api')
-]).then(startWebcam());
+        if (this.capturedDescriptors.length < 5) {
+            UIkit.notification({message: 'Please capture 5 face descriptors.', status: 'warning'});
+            return;
+        }
+
+        const data = {
+            name: name,
+            email: email,
+            descriptors: this.capturedDescriptors
+        };
+
+        $.ajax({
+            type: 'POST',
+            url: '/register',
+            data: JSON.stringify(data),
+            contentType: 'application/json',
+            success: function(response) {
+                UIkit.notification({message: 'Registration successful!', status: 'success'});
+                window.location.href = '/';
+            },
+            error: function(error) {
+                UIkit.notification({message: 'Registration failed.', status: 'danger'});
+            }
+        });
+    }
+};
+
+face.init();
