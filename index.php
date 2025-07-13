@@ -1,29 +1,20 @@
-<?php
-session_start();
-
-$request = $_SERVER['REQUEST_URI'];
-
-switch ($request) {
-    case '/' :
-        require __DIR__ . '/templates/home.php';
-        break;
-    case '/login' :
-        require __DIR__ . '/login.php';
-        break;
-    case '/register' :
-        require __DIR__ . '/register.php';
-        break;
-    case '/dashboard' :
-        require __DIR__ . '/dashboard.php';
-        break;
-    case '/logout' :
-        require __DIR__ . '/logout.php';
-        break;
-    case '/api/users' :
-        require __DIR__ . '/api/users.php';
-        break;
-    default:
-        http_response_code(404);
-        require __DIR__ . '/templates/404.php';
-        break;
-}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/css/uikit.min.css" />
+</head>
+<body>
+    <div class="uk-container uk-container-xsmall uk-padding uk-flex uk-flex-center uk-flex-middle uk-height-viewport">
+        <div class="uk-text-center">
+            <h1 class="uk-heading-medium">Welcome</h1>
+            <p>Click the button below to login with your face.</p>
+            <a href="login.php" class="uk-button uk-button-primary">Login with Face</a>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/js/uikit-icons.min.js"></script>
+</body>
+</html>
