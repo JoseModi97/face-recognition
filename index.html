@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/css/uikit.min.css" />
+    <style>
+        .glow-border {
+            box-shadow: 0 0 10px rgba(0, 112, 243, 0.8), 0 0 20px rgba(0, 112, 243, 0.6), 0 0 30px rgba(0, 112, 243, 0.4);
+            animation: glow 1.5s infinite alternate;
+        }
+        @keyframes glow {
+            from {
+                box-shadow: 0 0 10px rgba(0, 112, 243, 0.8), 0 0 20px rgba(0, 112, 243, 0.6), 0 0 30px rgba(0, 112, 243, 0.4);
+            }
+            to {
+                box-shadow: 0 0 20px rgba(0, 112, 243, 1), 0 0 30px rgba(0, 112, 243, 0.8), 0 0 40px rgba(0, 112, 243, 0.6);
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="uk-container uk-container-xsmall uk-padding">

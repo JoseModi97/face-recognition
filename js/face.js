@@ -22,11 +22,16 @@ async function onPlay() {
     $(canvas).css('top', '0');
     $(canvas).css('left', '0');
 
+    const videoContainerParent = $('.uk-margin[style*="position: relative"]');
+    videoContainerParent.addClass('glow-border');
+
     const users = await $.ajax({
         type: 'GET',
         url: 'users.php',
         dataType: 'json'
     });
+
+    videoContainerParent.removeClass('glow-border');
 
     if (users.length === 0) {
         $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
