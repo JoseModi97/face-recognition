@@ -31,9 +31,8 @@ async function onPlay() {
     });
     const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
 
-    let loggedIn = false;
+    let currentUser = null;
     setInterval(async () => {
-        if (loggedIn) return;
         const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
         const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
@@ -44,26 +43,33 @@ async function onPlay() {
             const box = detection.detection.box;
             const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
             drawBox.draw(canvas);
-            if (bestMatch.label !== 'unknown' && !loggedIn) {
-                loggedIn = true;
-                const user = users.find(u => u.name === bestMatch.label);
-                $.ajax({
-                    type: 'POST',
-                    url: 'login.php',
-                    data: JSON.stringify({ email: user.email }),
-                    contentType: 'application/json',
-                    success: function(response) {
-                        UIkit.notification({message: 'Login successful!', status: 'success'});
-                        window.location.href = 'dashboard.php';
-                    },
-                    error: function(error) {
-                        UIkit.notification({message: 'Login failed.', status: 'danger'});
-                        loggedIn = false;
-                    }
-                });
+            if (bestMatch.label !== 'unknown') {
+                currentUser = users.find(u => u.name === bestMatch.label);
+                $('#login-face').show();
+            } else {
+                currentUser = null;
+                $('#login-face').hide();
             }
         });
     }, 100);
+
+    $('#login-face').on('click', async () => {
+        if (currentUser) {
+            $.ajax({
+                type: 'POST',
+                url: 'login.php',
+                data: JSON.stringify({ email: currentUser.email }),
+                contentType: 'application/json',
+                success: function(response) {
+                    UIkit.notification({message: 'Login successful!', status: 'success'});
+                    window.location.href = 'dashboard.php';
+                },
+                error: function(error) {
+                    UIkit.notification({message: 'Login failed.', status: 'danger'});
+                }
+            });
+        }
+    });
 }
 
 $('#capture-face').on('click', async () => {
