@@ -3,6 +3,45 @@ const canvas = document.createElement('canvas');
 const webcam = new faceapi.Webcam(webcamElement, 'user', canvas);
 let capturedDescriptors = [];
 
+$('#login-face').on('click', async () => {
+    const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
+    if (detection) {
+        $.ajax({
+            type: 'GET',
+            url: 'users.php',
+            success: function(response) {
+                const users = JSON.parse(response);
+                const labeledFaceDescriptors = users.map(user => {
+                    const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
+                    return new faceapi.LabeledFaceDescriptors(user.email, descriptors);
+                });
+                const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
+                const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+
+                if (bestMatch.label !== 'unknown') {
+                    $.ajax({
+                        type: 'POST',
+                        url: 'login.php',
+                        data: JSON.stringify({ email: bestMatch.label }),
+                        contentType: 'application/json',
+                        success: function(response) {
+                            UIkit.notification({message: 'Login successful!', status: 'success'});
+                            window.location.href = 'dashboard.php';
+                        },
+                        error: function(error) {
+                            UIkit.notification({message: 'Login failed.', status: 'danger'});
+                        }
+                    });
+                } else {
+                    UIkit.notification({message: 'Face not recognized.', status: 'danger'});
+                }
+            }
+        });
+    } else {
+        UIkit.notification({message: 'No face detected.', status: 'danger'});
+    }
+});
+
 async function startWebcam() {
     await webcam.start();
 }
