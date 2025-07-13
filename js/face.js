@@ -24,6 +24,7 @@ async function onPlay() {
 
     const videoContainerParent = $('.uk-margin[style*="position: relative"]');
     videoContainerParent.addClass('glow-border');
+    $('#loader').show();
 
     const users = await $.ajax({
         type: 'GET',
@@ -32,6 +33,7 @@ async function onPlay() {
     });
 
     videoContainerParent.removeClass('glow-border');
+    $('#loader').hide();
     $('#skeleton-loader').hide();
 
     if (users.length === 0) {
