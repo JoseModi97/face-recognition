@@ -31,9 +31,17 @@ async function onPlay() {
     });
     const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
 
+    let forwardTimes = [];
     let currentUser = null;
-    setInterval(async () => {
+
+    async function onFrame() {
+        if (webcamElement.paused || webcamElement.ended) {
+            return setTimeout(() => onFrame());
+        }
+
+        const ts = Date.now();
         const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
+        forwardTimes = [Date.now() - ts].concat(forwardTimes).slice(0, 30);
         const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
         canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
         faceapi.draw.drawDetections(canvas, resizedDetections);
@@ -51,7 +59,9 @@ async function onPlay() {
                 $('#login-face').hide();
             }
         });
-    }, 100);
+        setTimeout(() => onFrame());
+    }
+    onFrame();
 
     $('#login-face').on('click', async () => {
         if (currentUser) {
