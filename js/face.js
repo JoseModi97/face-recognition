@@ -97,8 +97,8 @@ $('#register-form').on('submit', async (e) => {
 });
 
 Promise.all([
-    faceapi.nets.tinyFaceDetector.loadFromUri('/face-api'),
-    faceapi.nets.faceLandmark68Net.loadFromUri('/face-api'),
-    faceapi.nets.faceRecognitionNet.loadFromUri('/face-api'),
-    faceapi.nets.ssdMobilenetv1.loadFromUri('/face-api')
+    faceapi.nets.tinyFaceDetector.loadFromUri('face-api'),
+    faceapi.nets.faceLandmark68Net.loadFromUri('face-api'),
+    faceapi.nets.faceRecognitionNet.loadFromUri('face-api'),
+    faceapi.nets.ssdMobilenetv1.loadFromUri('face-api')
 ]).then(startWebcam());
