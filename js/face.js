@@ -26,33 +26,43 @@ const face = {
     },
     onPlay: async function() {
         const canvas = faceapi.createCanvasFromMedia(this.webcamElement);
-        const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
+        let videoContainer;
+        if (window.location.pathname === '/login') {
+            videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
+        } else if (window.location.pathname === '/register') {
+            videoContainer = this.webcamElement.parentElement;
+        }
         videoContainer.append(canvas);
         faceapi.matchDimensions(canvas, { width: this.webcamElement.width, height: this.webcamElement.height });
         $(canvas).css('position', 'absolute');
         $(canvas).css('top', '0');
         $(canvas).css('left', '0');
 
-        const videoContainerParent = $('.uk-margin[style*="position: relative"]');
+        const videoContainerParent = $(videoContainer);
         videoContainerParent.addClass('glow-border');
         $('#loader').show();
 
-        const users = await this.getUsers();
+        if (window.location.pathname === '/login') {
+            const users = await this.getUsers();
 
-        videoContainerParent.removeClass('glow-border');
-        $('#loader').hide();
-        $('#skeleton-loader').hide();
+            videoContainerParent.removeClass('glow-border');
+            $('#loader').hide();
+            $('#skeleton-loader').hide();
 
-        if (users.length === 0) {
-            $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="/register" class="uk-button uk-button-default">Register</a>');
-            return;
+            if (users.length === 0) {
+                $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="/register" class="uk-button uk-button-default">Register</a>');
+                return;
+            }
+            $('a[href="/register"]').show();
+
+            const labeledFaceDescriptors = this.getLabeledFaceDescriptors(users);
+            const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
+
+            this.onFrame(canvas, faceMatcher, users);
+        } else {
+            videoContainerParent.removeClass('glow-border');
+            $('#loader').hide();
         }
-        $('a[href="/register"]').show();
-
-        const labeledFaceDescriptors = this.getLabeledFaceDescriptors(users);
-        const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
-
-        this.onFrame(canvas, faceMatcher, users);
     },
     onFrame: async function(canvas, faceMatcher, users) {
         if (this.webcamElement.paused || this.webcamElement.ended) {
