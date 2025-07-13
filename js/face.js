@@ -1,7 +1,16 @@
 const webcamElement = document.getElementById('webcam');
-const canvas = document.createElement('canvas');
-const webcam = new faceapi.Webcam(webcamElement, 'user', canvas);
 let capturedDescriptors = [];
+
+function startWebcam() {
+    navigator.mediaDevices.getUserMedia({ video: true })
+        .then(stream => {
+            webcamElement.srcObject = stream;
+        })
+        .catch(err => {
+            console.error("Error starting webcam: ", err);
+            UIkit.notification({message: 'Error starting webcam.', status: 'danger'});
+        });
+}
 
 $('#login-face').on('click', async () => {
     const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
@@ -41,10 +50,6 @@ $('#login-face').on('click', async () => {
         UIkit.notification({message: 'No face detected.', status: 'danger'});
     }
 });
-
-async function startWebcam() {
-    await webcam.start();
-}
 
 $('#capture-face').on('click', async () => {
     const detection = await faceapi.detectSingleFace(webcamElement).withFaceLandmarks().withFaceDescriptor();
@@ -96,4 +101,4 @@ Promise.all([
     faceapi.nets.faceLandmark68Net.loadFromUri('/face-api'),
     faceapi.nets.faceRecognitionNet.loadFromUri('/face-api'),
     faceapi.nets.ssdMobilenetv1.loadFromUri('/face-api')
-]).then(startWebcam);
+]).then(startWebcam());
