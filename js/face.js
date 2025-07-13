@@ -28,6 +28,11 @@ async function onPlay() {
         dataType: 'json'
     });
 
+    if (users.length === 0) {
+        $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
+        return;
+    }
+
     const labeledFaceDescriptors = users.map(user => {
         const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
         return new faceapi.LabeledFaceDescriptors(user.name, descriptors);
