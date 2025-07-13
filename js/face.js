@@ -45,16 +45,7 @@ async function onPlay() {
             drawBox.draw(canvas);
             if (bestMatch.label !== 'unknown') {
                 currentUser = users.find(u => u.name === bestMatch.label);
-                const loginButton = $('#login-face');
-                loginButton.show();
-                const box = detection.detection.box;
-                const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
-                const videoRect = videoContainer.getBoundingClientRect();
-                loginButton.css({
-                    position: 'absolute',
-                    top: `${box.y + box.height - videoRect.top}px`,
-                    left: `${box.x + (box.width - loginButton.outerWidth()) / 2 - videoRect.left}px`
-                });
+                $('#login-face').show();
             } else {
                 currentUser = null;
                 $('#login-face').hide();
