@@ -15,6 +15,7 @@ if (!isset($_SESSION['email'])) {
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/css/uikit.min.css" />
 </head>
 <body>
+    <?php include 'loader.php'; ?>
     <div class="uk-container uk-container-xsmall uk-padding">
         <h1 class="uk-heading-medium">Dashboard</h1>
         <p>Welcome, <?php echo $_SESSION['email']; ?>!</p>
