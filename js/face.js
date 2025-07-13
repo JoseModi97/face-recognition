@@ -65,6 +65,37 @@ $('#capture-face').on('click', async () => {
     }
 });
 
+$('#image-upload').on('change', () => {
+    if ($('#image-upload').val()) {
+        $('#webcam').hide();
+        $('#capture-face').hide();
+    } else {
+        $('#webcam').show();
+        $('#capture-face').show();
+    }
+});
+
+$('#upload-image').on('click', async () => {
+    const imageUpload = document.getElementById('image-upload');
+    if (imageUpload.files.length > 0) {
+        const image = await faceapi.bufferToImage(imageUpload.files[0]);
+        const detection = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+        if (detection) {
+            capturedDescriptors.push(detection.descriptor);
+            UIkit.notification({message: `Captured face descriptor ${capturedDescriptors.length}/5`, status: 'success'});
+            if (capturedDescriptors.length >= 5) {
+                $('#capture-face').prop('disabled', true);
+                $('#upload-image').prop('disabled', true);
+                UIkit.notification({message: 'Maximum face descriptors captured.', status: 'primary'});
+            }
+        } else {
+            UIkit.notification({message: 'No face detected in the uploaded image.', status: 'danger'});
+        }
+    } else {
+        UIkit.notification({message: 'Please select an image file.', status: 'warning'});
+    }
+});
+
 $('#register-form').on('submit', async (e) => {
     e.preventDefault();
     const name = $('#name').val();
