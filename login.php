@@ -1,6 +1,11 @@
 <?php
 session_start();
 
+if (isset($_SESSION['email'])) {
+    header('Location: dashboard.php');
+    exit();
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $data = json_decode(file_get_contents('php://input'), true);
 
