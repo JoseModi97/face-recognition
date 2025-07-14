@@ -5,7 +5,9 @@ function startWebcam() {
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             webcamElement.srcObject = stream;
-            webcamElement.addEventListener('play', onPlay);
+            if (document.getElementById('video-container')) {
+                webcamElement.addEventListener('play', onPlay);
+            }
         })
         .catch(err => {
             console.error("Error starting webcam: ", err);
