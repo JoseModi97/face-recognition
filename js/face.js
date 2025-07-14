@@ -15,14 +15,14 @@ function startWebcam() {
 
 async function onPlay() {
     const canvas = faceapi.createCanvasFromMedia(webcamElement);
-    const videoContainer = document.querySelector('.uk-margin[style*="position: relative"]');
+    const videoContainer = document.getElementById('video-container');
     videoContainer.append(canvas);
     faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
     $(canvas).css('position', 'absolute');
     $(canvas).css('top', '0');
     $(canvas).css('left', '0');
 
-    const videoContainerParent = $('.uk-margin[style*="position: relative"]');
+    const videoContainerParent = $('#video-container');
     videoContainerParent.addClass('glow-border');
     $('#loader').show();
 
