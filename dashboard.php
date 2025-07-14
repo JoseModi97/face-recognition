@@ -2,7 +2,7 @@
 session_start();
 
 if (!isset($_SESSION['email'])) {
-    header('Location: index.php');
+    header('Location: index.html');
     exit();
 }
 ?>
@@ -19,7 +19,6 @@ if (!isset($_SESSION['email'])) {
     <div class="uk-container uk-container-xsmall uk-padding">
         <h1 class="uk-heading-medium">Dashboard</h1>
         <p>Welcome, <?php echo $_SESSION['email']; ?>!</p>
-        <a href="users.php" class="uk-button uk-button-primary">View Users</a>
         <a href="logout.php" class="uk-button uk-button-danger">Logout</a>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/uikit@3.21.5/dist/js/uikit.min.js"></script>
