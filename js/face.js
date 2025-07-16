@@ -5,9 +5,7 @@ function startWebcam() {
     navigator.mediaDevices.getUserMedia({ video: true })
         .then(stream => {
             webcamElement.srcObject = stream;
-            if (document.getElementById('video-container')) {
-                webcamElement.addEventListener('play', onPlay);
-            }
+            webcamElement.addEventListener('play', onPlay);
         })
         .catch(err => {
             console.error("Error starting webcam: ", err);
@@ -16,88 +14,96 @@ function startWebcam() {
 }
 
 async function onPlay() {
-    const canvas = faceapi.createCanvasFromMedia(webcamElement);
-    const videoContainer = document.getElementById('video-container');
-    videoContainer.append(canvas);
-    faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
-    $(canvas).css('position', 'absolute');
-    $(canvas).css('top', '0');
-    $(canvas).css('left', '0');
+    try {
+        const canvas = faceapi.createCanvasFromMedia(webcamElement);
+        const videoContainer = document.getElementById('video-container');
+        if (!videoContainer) {
+            throw new Error('Video container not found');
+        }
+        videoContainer.append(canvas);
+        faceapi.matchDimensions(canvas, { width: webcamElement.width, height: webcamElement.height });
+        $(canvas).css('position', 'absolute');
+        $(canvas).css('top', '0');
+        $(canvas).css('left', '0');
 
-    const videoContainerParent = $('#video-container');
-    videoContainerParent.addClass('glow-border');
-    $('#loader').show();
+        const videoContainerParent = $('#video-container');
+        videoContainerParent.addClass('glow-border');
+        $('#loader').show();
 
-    const users = await $.ajax({
-        type: 'GET',
-        url: 'users.php',
-        dataType: 'json'
-    });
+        const users = await $.ajax({
+            type: 'GET',
+            url: 'users.php',
+            dataType: 'json'
+        });
 
-    videoContainerParent.removeClass('glow-border');
-    $('#loader').hide();
-    $('#skeleton-loader').hide();
+        videoContainerParent.removeClass('glow-border');
+        $('#loader').hide();
+        $('#skeleton-loader').hide();
 
-    if (users.length === 0) {
-        $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
-        return;
-    }
-
-    const labeledFaceDescriptors = users.map(user => {
-        const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
-        return new faceapi.LabeledFaceDescriptors(user.name, descriptors);
-    });
-    const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
-
-    let forwardTimes = [];
-    let currentUser = null;
-
-    async function onFrame() {
-        if (webcamElement.paused || webcamElement.ended) {
-            return setTimeout(() => onFrame());
+        if (users.length === 0) {
+            $('.uk-container').html('<div class="uk-alert-danger" uk-alert><a href class="uk-alert-close" uk-close></a><p>No users found. Please register.</p></div><a href="register.html" class="uk-button uk-button-default">Register</a>');
+            return;
         }
 
-        const ts = Date.now();
-        const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
-        forwardTimes = [Date.now() - ts].concat(forwardTimes).slice(0, 30);
-        const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
-        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
-        faceapi.draw.drawDetections(canvas, resizedDetections);
-        faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-        resizedDetections.forEach(detection => {
-            const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-            const box = detection.detection.box;
-            const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
-            drawBox.draw(canvas);
-            if (bestMatch.label !== 'unknown') {
-                currentUser = users.find(u => u.name === bestMatch.label);
-                $('#login-face').show();
-            } else {
-                currentUser = null;
-                $('#login-face').hide();
-            }
+        const labeledFaceDescriptors = users.map(user => {
+            const descriptors = user.descriptors.map(desc => new Float32Array(Object.values(desc)));
+            return new faceapi.Labeled_face_descriptors(user.name, descriptors);
         });
-        setTimeout(() => onFrame());
-    }
-    onFrame();
+        const faceMatcher = new faceapi.FaceMatcher(labeledFaceDescriptors);
 
-    $('#login-face').on('click', async () => {
-        if (currentUser) {
-            $.ajax({
-                type: 'POST',
-                url: 'login.php',
-                data: JSON.stringify({ email: currentUser.email }),
-                contentType: 'application/json',
-                success: function(response) {
-                    UIkit.notification({message: 'Login successful!', status: 'success'});
-                    window.location.href = 'dashboard.php';
-                },
-                error: function(error) {
-                    UIkit.notification({message: 'Login failed.', status: 'danger'});
+        let forwardTimes = [];
+        let currentUser = null;
+
+        async function onFrame() {
+            if (webcamElement.paused || webcamElement.ended) {
+                return setTimeout(() => onFrame());
+            }
+
+            const ts = Date.now();
+            const detections = await faceapi.detectAllFaces(webcamElement).withFaceLandmarks().withFaceDescriptors();
+            forwardTimes = [Date.now() - ts].concat(forwardTimes).slice(0, 30);
+            const resizedDetections = faceapi.resizeResults(detections, { width: webcamElement.width, height: webcamElement.height });
+            canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+            faceapi.draw.drawDetections(canvas, resizedDetections);
+            faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+            resizedDetections.forEach(detection => {
+                const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
+                const box = detection.detection.box;
+                const drawBox = new faceapi.draw.DrawBox(box, { label: bestMatch.toString() });
+                drawBox.draw(canvas);
+                if (bestMatch.label !== 'unknown') {
+                    currentUser = users.find(u => u.name === bestMatch.label);
+                    $('#login-face').show();
+                } else {
+                    currentUser = null;
+                    $('#login-face').hide();
                 }
             });
+            setTimeout(() => onFrame());
         }
-    });
+        onFrame();
+
+        $('#login-face').on('click', async () => {
+            if (currentUser) {
+                $.ajax({
+                    type: 'POST',
+                    url: 'login.php',
+                    data: JSON.stringify({ email: currentUser.email }),
+                    contentType: 'application/json',
+                    success: function(response) {
+                        UIkit.notification({message: 'Login successful!', status: 'success'});
+                        window.location.href = 'dashboard.php';
+                    },
+                    error: function(error) {
+                        UIkit.notification({message: 'Login failed.', status: 'danger'});
+                    }
+                });
+            }
+        });
+    } catch (err) {
+        console.error("Error in onPlay: ", err);
+        UIkit.notification({message: 'An error occurred during face detection setup. Please try again.', status: 'danger'});
+    }
 }
 
 $('#capture-face').on('click', async () => {
